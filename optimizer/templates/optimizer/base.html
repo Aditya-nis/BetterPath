@@ -42,10 +42,12 @@
   <nav class="navbar navbar-expand-lg navbar-dark navbar-ai sticky-top">
     <div class="container-fluid px-lg-5">
       <a class="navbar-brand d-flex align-items-center" href="{% url 'dashboard' %}">
-        <i class="bi bi-cpu text-cyan fs-3 me-2"></i>
+        <div class="brand-icon-wrapper me-2">
+          <i class="bi bi-compass-fill text-cyan fs-3"></i>
+        </div>
         <div>
-          <span class="navbar-brand-badge fs-5">TSP AI-Optimizer</span>
-          <span class="d-none d-md-inline-block text-subtle fs-7 ms-2 border-start ps-2 border-secondary">Third Year AI Microproject</span>
+          <span class="navbar-brand-badge fs-5 fw-bold">BetterPath</span>
+          <span class="d-none d-md-inline-block text-subtle fs-7 ms-2 border-start ps-2 border-secondary">Route Optimizer</span>
         </div>
       </a>
       
@@ -66,13 +68,18 @@
             </a>
           </li>
           <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'algorithm_lab' %}active{% endif %}" href="{% url 'algorithm_lab' %}">
+              <i class="bi bi-cpu-fill me-1"></i> Algorithm Lab
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link {% if request.resolver_match.url_name == 'history' %}active{% endif %}" href="{% url 'history' %}">
-              <i class="bi bi-clock-history me-1"></i> Optimization History
+              <i class="bi bi-graph-up me-1"></i> Analytics
             </a>
           </li>
           <li class="nav-item">
             <a class="nav-link {% if request.resolver_match.url_name == 'about' %}active{% endif %}" href="{% url 'about' %}">
-              <i class="bi bi-info-circle me-1"></i> About Project
+              <i class="bi bi-info-circle me-1"></i> About
             </a>
           </li>
           <!-- Theme Toggle Switcher Button -->
@@ -83,7 +90,7 @@
           </li>
           <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
             <a href="{% url 'optimizer' %}" class="btn btn-ai-primary btn-sm px-3">
-              <i class="bi bi-play-circle-fill me-1"></i> Launch GA
+              <i class="bi bi-play-circle-fill me-1"></i> Optimize Route
             </a>
           </li>
         </ul>

@@ -1,0 +1,608 @@
+{% extends 'optimizer/base.html' %}
+{% load static %}
+
+{% block title %}Algorithm Lab | BetterPath Benchmark Suite{% endblock %}
+
+{% block content %}
+<div class="row g-4 position-relative">
+
+  <!-- Benchmark Spinner Overlay -->
+  <div id="benchmarkSpinner" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(6, 11, 22, 0.88); z-index: 2000; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(8px);">
+    <div class="pulse-spinner mb-3"></div>
+    <h5 class="text-white fw-bold mb-1">Benchmarking Algorithms...</h5>
+    <p class="text-cyan fs-7 mb-0" id="labSpinnerText">Running Nearest Neighbor, 2-Opt, Genetic Algorithm & Exact permutations</p>
+  </div>
+
+  <!-- Header Banner -->
+  <div class="col-12">
+    <div class="glass-panel p-4">
+      <div class="row align-items-center">
+        <div class="col-lg-8">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge badge-ai badge-cyan"><i class="bi bi-cpu-fill me-1"></i> Algorithm Benchmark Lab</span>
+            <span class="badge badge-ai badge-emerald"><i class="bi bi-speedometer2 me-1"></i> Multi-Algorithm Evaluation</span>
+          </div>
+          <h2 class="fw-bold text-white mb-2">Multi-Algorithm TSP Benchmarking Workbench</h2>
+          <p class="text-muted mb-0">
+            Compare greedy heuristics (<strong>Nearest Neighbor</strong>), local search (<strong>2-Opt</strong>), evolutionary metaheuristics (<strong>Genetic Algorithm</strong>), and mathematical global optimum (<strong>Brute Force</strong>) across identical distance matrices.
+          </p>
+        </div>
+        <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+          <button type="button" class="btn btn-ai-primary btn-lg shadow-lg" id="btnRunBenchmark">
+            <i class="bi bi-play-fill me-1"></i> Run Benchmark Suite
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Benchmark Configuration Panel -->
+  <div class="col-lg-4">
+    <div class="glass-panel p-4 mb-4">
+      <h5 class="fw-bold mb-3 text-white">
+        <i class="bi bi-sliders text-cyan me-2"></i>Benchmark Settings
+      </h5>
+
+      <!-- Dataset Selector -->
+      <div class="mb-3">
+        <label class="form-label d-block">Test Dataset</label>
+        <select class="form-select" id="labDatasetSelect">
+          <option value="maharashtra_8" selected>Maharashtra Core (8 Cities) - With Exact Brute Force</option>
+          <option value="india_metros_10">Top Indian Metros (10 Cities) - Heuristics Benchmark</option>
+          <option value="maharashtra_16">Maharashtra Grand Tour (16 Cities) - Scalability Test</option>
+          <option value="india_grand_20">Pan-India Grand Tour (20 Cities) - High Dimensional</option>
+        </select>
+        <small class="text-subtle fs-8 d-block mt-1">Brute-Force exact verification runs automatically on datasets with &le; 9 cities.</small>
+      </div>
+
+      <!-- Distance Metric -->
+      <div class="mb-3">
+        <label class="form-label d-block">Distance Mode</label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="labDistanceMode" id="labModeHaversine" value="geographic" checked>
+          <label class="btn btn-outline-info text-start py-2 fs-7" for="labModeHaversine">
+            <i class="bi bi-globe-americas d-block fs-5 mb-1"></i>
+            <strong>Haversine</strong>
+            <small class="d-block text-muted">Great-Circle (km)</small>
+          </label>
+
+          <input type="radio" class="btn-check" name="labDistanceMode" id="labModeRoad" value="road">
+          <label class="btn btn-outline-info text-start py-2 fs-7" for="labModeRoad">
+            <i class="bi bi-car-front-fill d-block fs-5 mb-1"></i>
+            <strong>OSRM Road</strong>
+            <small class="d-block text-muted">Driving Distance</small>
+          </label>
+        </div>
+      </div>
+
+      <!-- Genetic Algorithm Parameters -->
+      <div class="mb-3">
+        <label class="form-label d-flex justify-content-between align-items-center mb-1">
+          <span>GA Hyperparameters</span>
+          <span class="badge badge-ai badge-cyan" style="font-size: 0.7rem;">OX1 + Elitism</span>
+        </label>
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label fs-8 text-muted">Population</label>
+            <input type="number" class="form-control form-control-sm" id="labGaPop" value="100" min="20" max="300">
+          </div>
+          <div class="col-6">
+            <label class="form-label fs-8 text-muted">Generations</label>
+            <input type="number" class="form-control form-control-sm" id="labGaGen" value="250" min="30" max="800">
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label fs-8 text-muted">Mutation Rate</label>
+            <input type="number" class="form-control form-control-sm" id="labGaMut" value="0.05" step="0.01" min="0.01" max="0.3">
+          </div>
+          <div class="col-6">
+            <label class="form-label fs-8 text-muted">Crossover Rate</label>
+            <input type="number" class="form-control form-control-sm" id="labGaCross" value="0.90" step="0.05" min="0.5" max="1.0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Benchmark Trigger -->
+      <button type="button" class="btn btn-ai-primary w-100 py-3 mt-2 fs-6" id="btnLabTrigger">
+        <i class="bi bi-play-circle-fill me-1"></i> Execute Benchmark Suite
+      </button>
+    </div>
+
+    <!-- Algorithm Theory Reference Card -->
+    <div class="glass-panel p-4 mb-4">
+      <h6 class="fw-bold text-white mb-3">
+        <i class="bi bi-book text-emerald me-2"></i>Evaluated Paradigms
+      </h6>
+      <div class="fs-8 text-subtle mb-3">
+        <div class="text-white fw-semibold"><i class="bi bi-arrow-right-short text-cyan"></i> Nearest Neighbor</div>
+        Greedy constructive heuristic visiting the closest unvisited node. Fast $O(N^2)$, but susceptible to trapped local loops.
+      </div>
+      <div class="fs-8 text-subtle mb-3">
+        <div class="text-white fw-semibold"><i class="bi bi-arrow-right-short text-cyan"></i> 2-Opt Local Search</div>
+        Iterative improvement removing edge crossings by reversing tour segments until 2-optimal.
+      </div>
+      <div class="fs-8 text-subtle mb-3">
+        <div class="text-white fw-semibold"><i class="bi bi-arrow-right-short text-cyan"></i> Genetic Algorithm (OX1)</div>
+        Evolutionary metaheuristic balancing exploration and exploitation with tournament selection and order preservation.
+      </div>
+      <div class="fs-8 text-subtle">
+        <div class="text-white fw-semibold"><i class="bi bi-arrow-right-short text-cyan"></i> Brute Force (Exact)</div>
+        Exhaustive search evaluating $(N-1)!$ permutations. Mathematically guarantees true global optimum.
+      </div>
+    </div>
+  </div>
+
+  <!-- Benchmark Results Display Column -->
+  <div class="col-lg-8">
+
+    <!-- Pre-run Empty State -->
+    <div id="labEmptyState" class="glass-panel p-5 text-center">
+      <i class="bi bi-speedometer fs-1 text-cyan opacity-75 mb-3 d-block"></i>
+      <h4 class="text-white fw-bold">Ready to Benchmark</h4>
+      <p class="text-muted fs-7 mb-4">
+        Select a dataset and click <strong>Execute Benchmark Suite</strong> to run all algorithms simultaneously against the exact same distance matrix.
+      </p>
+      <button type="button" class="btn btn-ai-outline-cyan" onclick="document.getElementById('btnLabTrigger').click();">
+        <i class="bi bi-play-fill me-1"></i> Run Sample Benchmark (Maharashtra Core 8)
+      </button>
+    </div>
+
+    <!-- Active Benchmark Results Container -->
+    <div id="labResultsContainer" style="display: none;">
+
+      <!-- Top Summary Metrics Ribbon -->
+      <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-md-3">
+          <div class="glass-panel p-3">
+            <span class="text-muted fs-8 text-uppercase d-block">Top Algorithm</span>
+            <div class="fs-5 fw-bold text-cyan text-truncate" id="labBestAlgoName">--</div>
+            <small class="text-subtle fs-8">Rank #1 by distance</small>
+          </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+          <div class="glass-panel p-3">
+            <span class="text-muted fs-8 text-uppercase d-block">Shortest Tour</span>
+            <div class="fs-5 fw-bold text-success" id="labBestDistance">-- km</div>
+            <small class="text-subtle fs-8">Absolute minimum</small>
+          </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+          <div class="glass-panel p-3">
+            <span class="text-muted fs-8 text-uppercase d-block">Max Improvement</span>
+            <div class="fs-5 fw-bold text-emerald" id="labMaxImprovement">--%</div>
+            <small class="text-subtle fs-8">Over baseline order</small>
+          </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+          <div class="glass-panel p-3">
+            <span class="text-muted fs-8 text-uppercase d-block">Optimality Status</span>
+            <div class="fs-5 fw-bold text-amber" id="labOptimalityStatus">--</div>
+            <small class="text-subtle fs-8" id="labOptimalitySub">Global status</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Multi-Algorithm Comparison Table Card -->
+      <div class="glass-panel p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <span class="badge badge-ai badge-emerald mb-1">Execution Complete</span>
+            <h5 class="fw-bold mb-0 text-white">Algorithm Benchmark Performance Matrix</h5>
+          </div>
+          <button class="btn btn-ai-secondary btn-sm" id="btnExportLabCsv">
+            <i class="bi bi-file-earmark-spreadsheet me-1 text-cyan"></i> Export CSV
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-dark table-hover table-ai align-middle mb-0" id="labBenchmarkTable">
+            <thead>
+              <tr class="fs-8 text-uppercase text-muted">
+                <th>Rank</th>
+                <th>Algorithm</th>
+                <th>Paradigm</th>
+                <th>Tour Distance</th>
+                <th>Distance Saved</th>
+                <th>Improvement</th>
+                <th>Execution Time</th>
+                <th>Optimality Gap</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="labBenchmarkTbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Visualization Charts -->
+      <div class="glass-panel p-4 mb-4">
+        <h5 class="fw-bold mb-3 text-white">
+          <i class="bi bi-bar-chart-line text-cyan me-2"></i>Comparative Performance Visualizations
+        </h5>
+        <div class="row g-4">
+          <!-- Distance Bar Chart -->
+          <div class="col-lg-6">
+            <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-white fw-semibold fs-7">Tour Distance by Algorithm (km)</span>
+                <span class="text-subtle fs-8">Lower is better</span>
+              </div>
+              <div style="height: 250px;">
+                <canvas id="labDistanceChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Execution Time Bar Chart -->
+          <div class="col-lg-6">
+            <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-white fw-semibold fs-7">Execution Time (seconds)</span>
+                <span class="text-subtle fs-8">Computational speed</span>
+              </div>
+              <div style="height: 250px;">
+                <canvas id="labTimeChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Route Map Inspection -->
+      <div class="glass-panel p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2 px-2">
+          <h5 class="fw-bold mb-0 text-white">
+            <i class="bi bi-map-fill text-cyan me-2"></i>Route Inspection Map
+            <span class="badge badge-ai badge-cyan ms-2 fs-8" id="activeInspectedAlgoBadge">Genetic Algorithm</span>
+          </h5>
+          <button class="btn btn-ai-secondary btn-sm" id="btnLabFitMap">
+            <i class="bi bi-aspect-ratio me-1"></i> Fit View
+          </button>
+        </div>
+        <div style="height: 380px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-glass);">
+          <div id="labMapContainer" style="width: 100%; height: 100%;"></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let labBenchmarkData = null;
+let labMap = null;
+let labMarkerGroup = null;
+let labRoutePolyline = null;
+let labDistanceChartInstance = null;
+let labTimeChartInstance = null;
+
+const PRESETS = {{ preset_datasets|safe }};
+
+document.addEventListener('DOMContentLoaded', () => {
+  initLabMap();
+
+  document.getElementById('btnRunBenchmark')?.addEventListener('click', runBenchmarkSuite);
+  document.getElementById('btnLabTrigger')?.addEventListener('click', runBenchmarkSuite);
+  document.getElementById('btnLabFitMap')?.addEventListener('click', fitLabMap);
+  document.getElementById('btnExportLabCsv')?.addEventListener('click', exportLabBenchmarkCsv);
+});
+
+function initLabMap() {
+  const container = document.getElementById('labMapContainer');
+  if (!container || labMap) return;
+
+  labMap = L.map('labMapContainer', {
+    zoomControl: true,
+    scrollWheelZoom: false,
+    attributionControl: false
+  }).setView([19.7515, 75.7139], 6);
+
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19
+  }).addTo(labMap);
+
+  labMarkerGroup = L.layerGroup().addTo(labMap);
+}
+
+async function runBenchmarkSuite() {
+  const datasetId = document.getElementById('labDatasetSelect').value;
+  const dataset = PRESETS[datasetId];
+  if (!dataset || !dataset.cities || dataset.cities.length < 3) {
+    showToast('Invalid dataset selected.', 'warning');
+    return;
+  }
+
+  const spinner = document.getElementById('benchmarkSpinner');
+  if (spinner) spinner.style.display = 'flex';
+
+  const distanceMode = document.querySelector('input[name="labDistanceMode"]:checked')?.value || 'geographic';
+  const popSize = parseInt(document.getElementById('labGaPop')?.value || 100);
+  const generations = parseInt(document.getElementById('labGaGen')?.value || 250);
+  const mutationRate = parseFloat(document.getElementById('labGaMut')?.value || 0.05);
+  const crossoverRate = parseFloat(document.getElementById('labGaCross')?.value || 0.90);
+
+  const payload = {
+    cities: dataset.cities,
+    starting_city: dataset.cities[0].name,
+    distance_mode: distanceMode,
+    population_size: popSize,
+    generations: generations,
+    mutation_rate: mutationRate,
+    crossover_rate: crossoverRate
+  };
+
+  try {
+    const res = await fetch('/api/compare/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken') || ''
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (spinner) spinner.style.display = 'none';
+
+    if (data.success) {
+      labBenchmarkData = data;
+      renderBenchmarkResults(data);
+      showToast(`Benchmarked ${data.results.length} algorithms across ${data.city_count} cities!`, 'success');
+    } else {
+      showToast(data.error || 'Benchmark run failed.', 'error');
+    }
+  } catch (err) {
+    if (spinner) spinner.style.display = 'none';
+    showToast('Benchmark error: ' + err.message, 'error');
+  }
+}
+
+function renderBenchmarkResults(data) {
+  document.getElementById('labEmptyState').style.display = 'none';
+  document.getElementById('labResultsContainer').style.display = 'block';
+
+  // Ribbon stats
+  const bestResult = data.ranking[0];
+  document.getElementById('labBestAlgoName').innerText = bestResult.algorithm_name;
+  document.getElementById('labBestDistance').innerText = `${bestResult.distance} km`;
+  document.getElementById('labMaxImprovement').innerText = `+${bestResult.improvement_percentage}%`;
+
+  if (data.proven_optimal) {
+    document.getElementById('labOptimalityStatus').innerText = 'Proven Optimal';
+    document.getElementById('labOptimalityStatus').className = 'fs-5 fw-bold text-success';
+    document.getElementById('labOptimalitySub').innerText = 'Brute force verified';
+  } else {
+    document.getElementById('labOptimalityStatus').innerText = 'Heuristic Optimal';
+    document.getElementById('labOptimalityStatus').className = 'fs-5 fw-bold text-cyan';
+    document.getElementById('labOptimalitySub').innerText = 'NP-Hard (> 9 cities)';
+  }
+
+  // Populate Table
+  const tbody = document.getElementById('labBenchmarkTbody');
+  tbody.innerHTML = '';
+
+  data.ranking.forEach((res, rank) => {
+    const tr = document.createElement('tr');
+    const isWinner = rank === 0;
+    const isExact = res.is_exact;
+
+    let badgeClass = 'badge-cyan';
+    if (isWinner) badgeClass = 'badge-emerald';
+    if (res.algorithm_name.includes('Baseline')) badgeClass = 'badge-secondary';
+    if (isExact) badgeClass = 'badge-amber';
+
+    const gapDisplay = res.optimality_gap === 0 ? '<span class="text-success fw-bold">0.00%</span>' : `+${res.optimality_gap}%`;
+    const execDisplay = res.execution_time < 0.001 ? '< 1 ms' : `${res.execution_time}s`;
+
+    tr.innerHTML = `
+      <td>
+        <span class="badge ${isWinner ? 'bg-success' : 'bg-secondary'} rounded-pill px-2">#${rank + 1}</span>
+      </td>
+      <td>
+        <strong class="${isWinner ? 'text-cyan' : 'text-white'}">${res.algorithm_name}</strong>
+        ${isWinner ? '<span class="badge badge-ai badge-emerald ms-1 fs-9">Winner</span>' : ''}
+      </td>
+      <td><span class="badge badge-ai ${badgeClass} fs-8">${res.metadata.type || 'Search'}</span></td>
+      <td class="fw-bold ${isWinner ? 'text-success' : 'text-white'}">${res.distance} km</td>
+      <td class="text-cyan">${res.distance_saved} km</td>
+      <td class="text-emerald">+${res.improvement_percentage}%</td>
+      <td class="text-subtle font-monospace">${execDisplay}</td>
+      <td>${gapDisplay}</td>
+      <td>
+        <button class="btn btn-ai-outline-cyan btn-sm py-0 px-2 fs-8" onclick="inspectAlgoRoute(${rank})">
+          <i class="bi bi-eye"></i> Map
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Render Visual Charts
+  renderLabDistanceChart(data.results);
+  renderLabTimeChart(data.results);
+
+  // Draw winning route on map
+  inspectAlgoRoute(0);
+}
+
+function inspectAlgoRoute(rankIndex) {
+  if (!labBenchmarkData || !labBenchmarkData.ranking[rankIndex]) return;
+  const res = labBenchmarkData.ranking[rankIndex];
+  
+  const badge = document.getElementById('activeInspectedAlgoBadge');
+  if (badge) badge.innerText = `${res.algorithm_name} (${res.distance} km)`;
+
+  // Update map
+  if (!labMap) initLabMap();
+  labMap.invalidateSize();
+
+  if (labMarkerGroup) labMarkerGroup.clearLayers();
+  if (labRoutePolyline) {
+    labMap.removeLayer(labRoutePolyline);
+    labRoutePolyline = null;
+  }
+
+  // Draw markers
+  const cities = labBenchmarkData.selected_cities;
+  const startCityName = cities[0].name;
+
+  cities.forEach((city, idx) => {
+    const isStart = city.name.toLowerCase() === startCityName.toLowerCase();
+    const pinClass = isStart ? 'custom-city-pin start-pin' : 'custom-city-pin standard-pin';
+    const pinHtml = `<div class="${pinClass}" style="width:24px; height:24px; font-size:11px;">${isStart ? '★' : idx + 1}</div>`;
+
+    const icon = L.divIcon({
+      html: pinHtml,
+      className: 'custom-leaflet-icon',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+
+    const marker = L.marker([city.lat, city.lng], { icon: icon });
+    marker.bindPopup(`<strong>${city.name}</strong><br>Lat: ${city.lat.toFixed(4)}, Lng: ${city.lng.toFixed(4)}`);
+    labMarkerGroup.addLayer(marker);
+  });
+
+  // Draw polyline
+  const routeCoords = res.tour_cities.map(c => [c.lat, c.lng]);
+  labRoutePolyline = L.polyline(routeCoords, {
+    color: '#00f0ff',
+    weight: 3.5,
+    opacity: 0.9,
+    dashArray: res.algorithm_name.includes('Baseline') ? '6, 6' : null
+  }).addTo(labMap);
+
+  fitLabMap();
+}
+
+function fitLabMap() {
+  if (!labMap || !labBenchmarkData || !labBenchmarkData.selected_cities.length) return;
+  const bounds = L.latLngBounds(labBenchmarkData.selected_cities.map(c => [c.lat, c.lng]));
+  labMap.fitBounds(bounds, { padding: [35, 35] });
+}
+
+function renderLabDistanceChart(results) {
+  const canvas = document.getElementById('labDistanceChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (labDistanceChartInstance) labDistanceChartInstance.destroy();
+
+  const labels = results.map(r => r.algorithm_name);
+  const distances = results.map(r => r.distance);
+  const bgColors = results.map(r => {
+    if (r.algorithm_name.includes('Baseline')) return 'rgba(239, 68, 68, 0.75)';
+    if (r.algorithm_name.includes('Genetic')) return 'rgba(0, 240, 255, 0.85)';
+    if (r.algorithm_name.includes('2-Opt')) return 'rgba(16, 185, 129, 0.85)';
+    if (r.is_exact) return 'rgba(245, 158, 11, 0.85)';
+    return 'rgba(56, 189, 248, 0.75)';
+  });
+
+  labDistanceChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Tour Distance (km)',
+        data: distances,
+        backgroundColor: bgColors,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#94a3b8', font: { size: 10 } },
+          grid: { display: false }
+        },
+        y: {
+          title: { display: true, text: 'Km (lower is better)', color: '#94a3b8', font: { size: 10 } },
+          ticks: { color: '#94a3b8' },
+          grid: { color: 'rgba(56, 189, 248, 0.08)' }
+        }
+      }
+    }
+  });
+}
+
+function renderLabTimeChart(results) {
+  const canvas = document.getElementById('labTimeChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (labTimeChartInstance) labTimeChartInstance.destroy();
+
+  const labels = results.map(r => r.algorithm_name);
+  const times = results.map(r => r.execution_time);
+
+  labTimeChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Execution Time (s)',
+        data: times,
+        backgroundColor: 'rgba(56, 189, 248, 0.75)',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#94a3b8', font: { size: 10 } },
+          grid: { display: false }
+        },
+        y: {
+          title: { display: true, text: 'Seconds', color: '#94a3b8', font: { size: 10 } },
+          ticks: { color: '#94a3b8' },
+          grid: { color: 'rgba(56, 189, 248, 0.08)' }
+        }
+      }
+    }
+  });
+}
+
+function exportLabBenchmarkCsv() {
+  if (!labBenchmarkData) return;
+  const rows = [
+    ['Rank', 'Algorithm Name', 'Paradigm', 'Tour Distance (km)', 'Distance Saved (km)', 'Improvement (%)', 'Execution Time (s)', 'Optimality Gap (%)']
+  ];
+
+  labBenchmarkData.ranking.forEach((r, idx) => {
+    rows.push([
+      idx + 1,
+      r.algorithm_name,
+      r.metadata.type || 'Search',
+      r.distance,
+      r.distance_saved,
+      r.improvement_percentage,
+      r.execution_time,
+      r.optimality_gap
+    ]);
+  });
+
+  let csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.map(val => `"${val}"`).join(',')).join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `betterpath_benchmark_comparison.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+</script>
+{% endblock %}

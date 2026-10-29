@@ -49,6 +49,12 @@ function setupEventListeners() {
     btnReset.addEventListener('click', handleResetSelection);
   }
 
+  // Quick Demo button
+  const btnQuickDemo = document.getElementById('btnQuickDemo');
+  if (btnQuickDemo) {
+    btnQuickDemo.addEventListener('click', handleQuickDemo);
+  }
+
   // Starting city dropdown change
   const startSelect = document.getElementById('startCitySelect');
   if (startSelect) {
@@ -114,6 +120,12 @@ function setupEventListeners() {
   const btnExportCsv = document.getElementById('btnExportResultCsv');
   if (btnExportCsv) {
     btnExportCsv.addEventListener('click', handleExportCurrentResultCsv);
+  }
+
+  // Export JSON button
+  const btnExportJson = document.getElementById('btnExportResultJson');
+  if (btnExportJson) {
+    btnExportJson.addEventListener('click', handleExportCurrentResultJson);
   }
 }
 
@@ -587,6 +599,9 @@ async function handleRunOptimization() {
   const popSize = parseInt(document.getElementById('inputPopSize')?.value || 100);
   const generations = parseInt(document.getElementById('inputGenerations')?.value || 300);
   const mutationRate = parseFloat(document.getElementById('inputMutationRate')?.value || 0.05);
+  const crossoverRate = parseFloat(document.getElementById('inputCrossoverRate')?.value || 0.90);
+  const earlyStopInput = document.getElementById('inputEarlyStop')?.value;
+  const earlyStopVal = earlyStopInput ? parseInt(earlyStopInput) : 50;
   const seedVal = document.getElementById('inputSeed')?.value;
   const seed = seedVal ? parseInt(seedVal) : null;
   
@@ -600,6 +615,8 @@ async function handleRunOptimization() {
     population_size: popSize,
     generations: generations,
     mutation_rate: mutationRate,
+    crossover_rate: crossoverRate,
+    early_stopping_generations: earlyStopVal,
     seed: seed,
     verify_brute_force: verifyBruteForce
   };
@@ -760,4 +777,36 @@ function handleExportDashboardPng() {
   }).catch(err => {
     showToast('Could not export image: ' + err.message, 'error');
   });
+}
+
+function handleExportCurrentResultJson() {
+  if (!lastOptimizationResult) {
+    showToast('No active optimization result to export.', 'warning');
+    return;
+  }
+
+  const r = lastOptimizationResult;
+  if (r.run_id) {
+    window.location.href = `/api/history/${r.run_id}/export-json/`;
+    showToast('Downloading route report JSON...', 'success');
+  } else {
+    const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `betterpath_optimization_result.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Exported JSON successfully.', 'success');
+  }
+}
+
+function handleQuickDemo() {
+  showToast('Launching instant demo with Maharashtra Core dataset...', 'info');
+  handleSelectPreset('maharashtra_8');
+  setTimeout(() => {
+    handleRunOptimization();
+  }, 350);
 }

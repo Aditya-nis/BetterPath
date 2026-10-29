@@ -8,9 +8,11 @@ from django.db.models import Avg, Sum, Count, Min, Max
 
 from .models import City, OptimizationRun
 from .forms import CityForm
-from .services.distance_calculator import build_haversine_matrix, calculate_tour_distance
+from .services.distance_calculator import build_haversine_matrix, calculate_tour_distance, haversine_distance
 from .services.routing_service import get_road_distance_matrix, get_road_route_geometry
 from .services.genetic_algorithm import GeneticAlgorithmTSP
+from .services.nearest_neighbor import solve_tsp_nearest_neighbor
+from .services.two_opt import solve_tsp_2opt
 from .services.brute_force import solve_tsp_brute_force
 
 logger = logging.getLogger(__name__)
@@ -208,6 +210,13 @@ def history_view(request):
     """Optimization History list view."""
     runs = OptimizationRun.objects.all()
     return render(request, 'optimizer/history.html', {'runs': runs})
+
+
+def algorithm_lab_view(request):
+    """Algorithm Benchmark Lab view comparing NN, 2-Opt, GA, and Brute Force."""
+    return render(request, 'optimizer/lab.html', {
+        'preset_datasets': PRESET_DATASETS,
+    })
 
 
 def about_view(request):
@@ -420,8 +429,11 @@ def api_optimize(request):
     pop_size = int(payload.get('population_size', 100))
     generations = int(payload.get('generations', 300))
     mutation_rate = float(payload.get('mutation_rate', 0.05))
+    crossover_rate = float(payload.get('crossover_rate', 0.90))
     tournament_size = int(payload.get('tournament_size', 5))
     elitism_count = int(payload.get('elitism_count', 2))
+    early_stop_val = payload.get('early_stopping_generations')
+    early_stopping_generations = int(early_stop_val) if early_stop_val not in (None, '', 'null') else None
     seed_val = payload.get('seed')
     seed = int(seed_val) if seed_val not in (None, '', 'null') else None
     
@@ -448,8 +460,10 @@ def api_optimize(request):
         population_size=pop_size,
         generations=generations,
         mutation_rate=mutation_rate,
+        crossover_rate=crossover_rate,
         tournament_size=tournament_size,
         elitism_count=elitism_count,
+        early_stopping_generations=early_stopping_generations,
         seed=seed
     )
     ga_results = ga.run(baseline_order=list(range(num_cities)))
@@ -629,4 +643,242 @@ def api_export_history_csv(request):
             params.get('population_size', 100),
         ])
 
+    return response
+
+
+@csrf_exempt
+def api_compare_algorithms(request):
+    """
+    Algorithm Lab Benchmark API:
+    Executes Baseline, Nearest Neighbor, 2-Opt Local Search, Genetic Algorithm,
+    and Brute Force exact search (if N <= 9) on the exact same distance matrix.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'}, status=405)
+
+    try:
+        payload = json.loads(request.body)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': f'Invalid JSON payload: {str(e)}'}, status=400)
+
+    raw_cities = payload.get('cities', [])
+    if not isinstance(raw_cities, list) or len(raw_cities) < 3:
+        return JsonResponse({
+            'success': False,
+            'error': 'At least 3 distinct cities are required for benchmark comparison.'
+        }, status=400)
+
+    cleaned_cities = []
+    seen_names = set()
+    for c in raw_cities:
+        name = str(c.get('name', '')).strip()
+        if not name or name in seen_names:
+            continue
+        seen_names.add(name)
+        try:
+            lat = float(c.get('lat', 0.0))
+            lng = float(c.get('lng', 0.0))
+        except (ValueError, TypeError):
+            continue
+        if -90.0 <= lat <= 90.0 and -180.0 <= lng <= 180.0:
+            cleaned_cities.append({'name': name, 'lat': lat, 'lng': lng})
+
+    if len(cleaned_cities) < 3:
+        return JsonResponse({'success': False, 'error': 'At least 3 valid distinct cities required.'}, status=400)
+
+    starting_city_name = payload.get('starting_city', '').strip()
+    start_city_idx = 0
+    if starting_city_name:
+        for idx, c in enumerate(cleaned_cities):
+            if c['name'].lower() == starting_city_name.lower():
+                start_city_idx = idx
+                break
+
+    selected_cities = [cleaned_cities[start_city_idx]] + [
+        c for i, c in enumerate(cleaned_cities) if i != start_city_idx
+    ]
+    num_cities = len(selected_cities)
+
+    distance_mode = payload.get('distance_mode', 'geographic')
+    is_road_mode = False
+    fallback_reason = None
+    if distance_mode == 'road':
+        dist_matrix, is_road_mode, fallback_reason = get_road_distance_matrix(selected_cities)
+    else:
+        dist_matrix = build_haversine_matrix(selected_cities)
+
+    # 1. Baseline
+    baseline_tour = list(range(num_cities)) + [0]
+    baseline_dist = round(calculate_tour_distance(baseline_tour, dist_matrix), 2)
+
+    # 2. Nearest Neighbor Heuristic (O(N^2))
+    nn_res = solve_tsp_nearest_neighbor(dist_matrix, start_idx=0)
+
+    # 3. 2-Opt Local Search (Segment Reversals)
+    two_opt_res = solve_tsp_2opt(dist_matrix, initial_tour=baseline_tour)
+
+    # 4. Genetic Algorithm
+    pop_size = int(payload.get('population_size', 100))
+    generations = int(payload.get('generations', 250))
+    mutation_rate = float(payload.get('mutation_rate', 0.05))
+    crossover_rate = float(payload.get('crossover_rate', 0.90))
+    ga = GeneticAlgorithmTSP(
+        distance_matrix=dist_matrix,
+        population_size=pop_size,
+        generations=generations,
+        mutation_rate=mutation_rate,
+        crossover_rate=crossover_rate,
+        tournament_size=5,
+        elitism_count=2,
+        seed=42
+    )
+    ga_res = ga.run(baseline_order=list(range(num_cities)))
+
+    # 5. Brute Force (Exact Optimal for N <= 9)
+    bf_res = None
+    if num_cities <= 9:
+        bf_res = solve_tsp_brute_force(dist_matrix)
+
+    # Determine reference best distance
+    reference_best = bf_res['best_distance'] if (bf_res and bf_res.get('supported')) else min(
+        nn_res['best_distance'],
+        two_opt_res['best_distance'],
+        ga_res['best_distance']
+    )
+
+    def compute_metrics(algo_name, tour_indices, distance, exec_time, is_exact, extra_meta=None):
+        route_cities = [selected_cities[idx] for idx in tour_indices]
+        saved = round(max(0.0, baseline_dist - distance), 2)
+        imp_pct = round((saved / baseline_dist * 100.0), 2) if baseline_dist > 0 else 0.0
+        gap = round(max(0.0, ((distance - reference_best) / reference_best) * 100.0), 2) if reference_best > 0 else 0.0
+        return {
+            'algorithm_name': algo_name,
+            'distance': round(distance, 2),
+            'distance_saved': saved,
+            'improvement_percentage': imp_pct,
+            'optimality_gap': gap,
+            'execution_time': exec_time,
+            'is_exact': is_exact,
+            'tour_indices': tour_indices,
+            'tour_cities': route_cities,
+            'metadata': extra_meta or {}
+        }
+
+    results = []
+    # Baseline
+    results.append(compute_metrics(
+        'Baseline (Input Order)',
+        baseline_tour,
+        baseline_dist,
+        0.0001,
+        False,
+        {'complexity': 'O(N)', 'type': 'Reference Order'}
+    ))
+
+    # Nearest Neighbor
+    results.append(compute_metrics(
+        'Nearest Neighbor',
+        nn_res['best_tour'],
+        nn_res['best_distance'],
+        nn_res['execution_time'],
+        False,
+        {'complexity': 'O(N^2)', 'type': 'Greedy Constructive'}
+    ))
+
+    # 2-Opt Local Search
+    results.append(compute_metrics(
+        '2-Opt Local Search',
+        two_opt_res['best_tour'],
+        two_opt_res['best_distance'],
+        two_opt_res['execution_time'],
+        False,
+        {'swaps_performed': two_opt_res.get('swaps_performed', 0), 'iterations': two_opt_res.get('iterations', 0), 'type': 'Local Search'}
+    ))
+
+    # Genetic Algorithm
+    results.append(compute_metrics(
+        'Genetic Algorithm (OX1)',
+        ga_res['best_tour'],
+        ga_res['best_distance'],
+        ga_res['execution_time'],
+        False,
+        {'generations': ga_res['generations_run'], 'pop_size': pop_size, 'type': 'Evolutionary Metaheuristic'}
+    ))
+
+    # Brute Force if available
+    if bf_res and bf_res.get('supported'):
+        results.append(compute_metrics(
+            'Brute Force (Exact)',
+            bf_res['best_tour'],
+            bf_res['best_distance'],
+            bf_res['execution_time'],
+            True,
+            {'permutations_evaluated': bf_res['evaluated_permutations'], 'type': 'Exhaustive Exact'}
+        ))
+
+    results_ranked = sorted(results, key=lambda x: x['distance'])
+
+    return JsonResponse({
+        'success': True,
+        'city_count': num_cities,
+        'distance_mode': 'road' if is_road_mode else 'geographic',
+        'is_road_mode': is_road_mode,
+        'fallback_reason': fallback_reason,
+        'selected_cities': selected_cities,
+        'reference_best_distance': round(reference_best, 2),
+        'proven_optimal': bool(bf_res and bf_res.get('supported')),
+        'results': results,
+        'ranking': results_ranked,
+        'convergence_history': ga_res.get('convergence_history', [])
+    })
+
+
+def api_export_run_json(request, run_id):
+    """Exports full optimization run report with turn-by-turn leg analysis as downloadable JSON."""
+    run = get_object_or_404(OptimizationRun, id=run_id)
+    
+    # Build itinerary with leg distance
+    itinerary = []
+    total_running_km = 0.0
+    for idx, city in enumerate(run.optimized_route):
+        leg_km = 0.0
+        if idx > 0:
+            prev = run.optimized_route[idx - 1]
+            leg_km = round(haversine_distance(prev['lat'], prev['lng'], city['lat'], city['lng']), 2)
+            total_running_km += leg_km
+
+        itinerary.append({
+            'stop_number': idx + 1,
+            'is_hub': (idx == 0 or idx == len(run.optimized_route) - 1),
+            'city': city['name'],
+            'latitude': city['lat'],
+            'longitude': city['lng'],
+            'leg_distance_km': leg_km,
+            'cumulative_distance_km': round(total_running_km, 2)
+        })
+
+    report = {
+        'platform': 'BetterPath - Advanced Route Optimization Platform',
+        'watermark': "developed by Aditya Nisargandh's System",
+        'run_id': run.id,
+        'timestamp': run.created_at.strftime('%Y-%m-%d %H:%M:%S UTC'),
+        'summary': {
+            'starting_hub': run.starting_city,
+            'city_count': len(run.selected_cities),
+            'distance_mode': run.distance_mode,
+            'initial_distance_km': run.initial_distance,
+            'optimized_distance_km': run.optimized_distance,
+            'distance_saved_km': run.distance_saved,
+            'efficiency_gain_pct': run.improvement_percentage,
+            'execution_time_seconds': run.execution_time,
+            'brute_force_verified': run.brute_force_verified,
+            'brute_force_distance_km': run.brute_force_distance
+        },
+        'algorithm_parameters': run.algorithm_parameters,
+        'route_itinerary': itinerary,
+        'convergence_history': run.convergence_history
+    }
+
+    response = HttpResponse(json.dumps(report, indent=2), content_type='application/json')
+    response['Content-Disposition'] = f'attachment; filename="betterpath_run_{run.id}_report.json"'
     return response

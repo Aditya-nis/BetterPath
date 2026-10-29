@@ -25,8 +25,10 @@ class GeneticAlgorithmTSP:
         population_size: int = 100,
         generations: int = 300,
         mutation_rate: float = 0.05,
+        crossover_rate: float = 0.90,
         tournament_size: int = 5,
         elitism_count: int = 2,
+        early_stopping_generations: Optional[int] = None,
         seed: Optional[int] = None
     ):
         self.dist_matrix = distance_matrix
@@ -34,8 +36,10 @@ class GeneticAlgorithmTSP:
         self.pop_size = max(10, population_size)
         self.generations = max(10, generations)
         self.mutation_rate = max(0.0, min(1.0, mutation_rate))
+        self.crossover_rate = max(0.1, min(1.0, crossover_rate))
         self.tournament_size = max(2, min(tournament_size, self.pop_size))
         self.elitism_count = max(1, min(elitism_count, self.pop_size // 2))
+        self.early_stopping_generations = early_stopping_generations
         self.seed = seed
 
         if self.seed is not None:
@@ -160,9 +164,12 @@ class GeneticAlgorithmTSP:
         best_so_far_chrom = list(baseline_chrom)
         best_so_far_dist = baseline_dist
         convergence_history: List[Dict[str, float]] = []
+        gens_without_improvement = 0
+        actual_gens_run = 0
 
         # Generational loop
         for gen in range(1, self.generations + 1):
+            actual_gens_run = gen
             # Evaluate fitness (distance) for each individual
             scores = [self._calculate_distance(ind) for ind in population]
 
@@ -171,9 +178,12 @@ class GeneticAlgorithmTSP:
             gen_best_chrom, gen_best_dist = ranked_pairs[0]
 
             # Update best-so-far
-            if gen_best_dist < best_so_far_dist:
+            if gen_best_dist < best_so_far_dist - 1e-6:
                 best_so_far_dist = gen_best_dist
                 best_so_far_chrom = list(gen_best_chrom)
+                gens_without_improvement = 0
+            else:
+                gens_without_improvement += 1
 
             # Record convergence stats
             convergence_history.append({
@@ -183,6 +193,12 @@ class GeneticAlgorithmTSP:
                 'average_distance': round(float(np.mean(scores)), 2)
             })
 
+            # Check early stopping condition if configured
+            if (self.early_stopping_generations is not None and 
+                self.early_stopping_generations > 0 and 
+                gens_without_improvement >= self.early_stopping_generations):
+                break
+
             # Elitism: preserve top individuals
             new_population: List[List[int]] = [list(ind) for ind, _ in ranked_pairs[:self.elitism_count]]
 
@@ -190,7 +206,10 @@ class GeneticAlgorithmTSP:
             while len(new_population) < self.pop_size:
                 p1 = self._tournament_selection(population, scores)
                 p2 = self._tournament_selection(population, scores)
-                child = self._ordered_crossover(p1, p2)
+                if random.random() < self.crossover_rate:
+                    child = self._ordered_crossover(p1, p2)
+                else:
+                    child = list(p1)
                 child = self._swap_mutation(child)
                 new_population.append(child)
 
@@ -216,6 +235,6 @@ class GeneticAlgorithmTSP:
             'baseline_tour': [0] + baseline_chrom + [0],
             'baseline_distance': round(baseline_dist, 2),
             'convergence_history': convergence_history,
-            'generations_run': self.generations,
+            'generations_run': actual_gens_run,
             'execution_time': exec_time,
         }

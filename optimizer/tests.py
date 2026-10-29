@@ -327,5 +327,87 @@ class TSPTestSuite(TestCase):
         content_type_js = headers_box[0].get('content-type', headers_box[0].get('Content-Type', ''))
         self.assertIn('javascript', content_type_js)
 
+    # 17. Nearest Neighbor Heuristic Solver
+    def test_nearest_neighbor_solver(self):
+        from optimizer.services.nearest_neighbor import solve_tsp_nearest_neighbor
+        res = solve_tsp_nearest_neighbor(self.matrix, start_idx=0)
+        self.assertEqual(res['algorithm_name'], 'Nearest Neighbor')
+        tour = res['best_tour']
+        self.assertEqual(tour[0], 0)
+        self.assertEqual(tour[-1], 0)
+        self.assertEqual(len(tour), len(self.sample_cities) + 1)
+        self.assertEqual(len(set(tour[:-1])), len(self.sample_cities))
+        self.assertGreater(res['best_distance'], 0.0)
+
+    # 18. 2-Opt Local Search Heuristic Solver
+    def test_two_opt_local_search(self):
+        from optimizer.services.two_opt import solve_tsp_2opt
+        res = solve_tsp_2opt(self.matrix)
+        self.assertEqual(res['algorithm_name'], '2-Opt Local Search')
+        tour = res['best_tour']
+        self.assertEqual(tour[0], 0)
+        self.assertEqual(tour[-1], 0)
+        self.assertEqual(len(tour), len(self.sample_cities) + 1)
+        self.assertEqual(len(set(tour[:-1])), len(self.sample_cities))
+        self.assertGreater(res['best_distance'], 0.0)
+
+    # 19. Multi-Algorithm Benchmark Comparison API
+    def test_algorithm_benchmark_compare_api(self):
+        response = self.client.post(
+            reverse('api_compare_algorithms'),
+            data=json.dumps({
+                'cities': self.sample_cities,
+                'starting_city': 'Pune',
+                'distance_mode': 'geographic'
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['city_count'], 5)
+        self.assertTrue(data['proven_optimal'])
+        algo_names = [r['algorithm_name'] for r in data['results']]
+        self.assertIn('Baseline (Input Order)', algo_names)
+        self.assertIn('Nearest Neighbor', algo_names)
+        self.assertIn('2-Opt Local Search', algo_names)
+        self.assertIn('Genetic Algorithm (OX1)', algo_names)
+        self.assertIn('Brute Force (Exact)', algo_names)
+        self.assertEqual(len(data['ranking']), 5)
+
+    # 20. Route Itinerary JSON Export API with Watermark
+    def test_run_json_export_endpoint(self):
+        run = OptimizationRun.objects.create(
+            starting_city='Pune',
+            selected_cities=self.sample_cities,
+            initial_route=self.sample_cities + [self.sample_cities[0]],
+            optimized_route=self.sample_cities + [self.sample_cities[0]],
+            initial_distance=1000.0,
+            optimized_distance=850.0,
+            distance_saved=150.0,
+            improvement_percentage=15.0,
+            execution_time=0.15,
+            distance_mode='geographic',
+            algorithm_parameters={'population_size': 100, 'generations': 200}
+        )
+        url = reverse('api_export_run_json', kwargs={'run_id': run.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('application/json', response['Content-Type'])
+        self.assertIn(f'betterpath_run_{run.id}_report.json', response['Content-Disposition'])
+        
+        data = json.loads(response.content)
+        self.assertEqual(data['watermark'], "developed by Aditya Nisargandh's System")
+        self.assertEqual(data['summary']['starting_hub'], 'Pune')
+        self.assertEqual(len(data['route_itinerary']), 6) # 5 cities + return to origin
+
+    # 21. Algorithm Lab Web Page View
+    def test_algorithm_lab_page_view(self):
+        response = self.client.get(reverse('algorithm_lab'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Multi-Algorithm TSP Benchmarking Workbench')
+        self.assertContains(response, 'Maharashtra Core (8 Cities)')
+
+
 
 

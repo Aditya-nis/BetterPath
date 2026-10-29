@@ -71,6 +71,9 @@
               <li><a class="dropdown-item py-2 rounded-2 preset-option-btn" href="#" data-preset-id="world_capitals_10"><i class="bi bi-check2-circle text-amber me-2"></i>Global Megacities (10 Cities)</a></li>
             </ul>
           </div>
+          <button type="button" class="btn btn-ai-outline-cyan btn-sm" id="btnQuickDemo" title="One-click Instant Demo Optimization">
+            <i class="bi bi-play-btn-fill me-1"></i> Quick Demo
+          </button>
           <button type="button" class="btn btn-ai-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#customCityModal" title="Enter manual coordinates">
             <i class="bi bi-plus-circle me-1 text-emerald"></i> Lat/Lng
           </button>
@@ -162,6 +165,17 @@
           <div class="col-6">
             <label class="form-label fs-8 text-muted">Mutation Rate</label>
             <input type="number" class="form-control form-control-sm" id="inputMutationRate" value="0.05" step="0.01" min="0.01" max="0.5">
+          </div>
+          <div class="col-6">
+            <label class="form-label fs-8 text-muted">Crossover Rate</label>
+            <input type="number" class="form-control form-control-sm" id="inputCrossoverRate" value="0.90" step="0.05" min="0.2" max="1.0">
+          </div>
+        </div>
+
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label fs-8 text-muted">Early Stopping Gens</label>
+            <input type="number" class="form-control form-control-sm" id="inputEarlyStop" value="50" min="10" max="200" placeholder="50">
           </div>
           <div class="col-6">
             <label class="form-label fs-8 text-muted">Random Seed (Opt)</label>
@@ -260,14 +274,22 @@
 
     <!-- Optimization Results Display Section -->
     <div id="resultsCard" class="glass-panel p-4 mb-4" style="display: none;">
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
           <span class="badge badge-ai badge-emerald mb-1">Optimization Complete</span>
           <h4 class="fw-bold mb-0 text-white">AI ROUTE OPTIMIZATION RESULT</h4>
         </div>
-        <button class="btn btn-ai-secondary btn-sm" id="btnExportResultCsv">
-          <i class="bi bi-file-earmark-spreadsheet me-1 text-cyan"></i> Export CSV
-        </button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-ai-secondary btn-sm" id="btnExportResultJson" title="Download Full Route Report as JSON">
+            <i class="bi bi-filetype-json me-1 text-cyan"></i> Export JSON
+          </button>
+          <button class="btn btn-ai-secondary btn-sm" id="btnExportResultCsv" title="Download CSV summary">
+            <i class="bi bi-file-earmark-spreadsheet me-1 text-emerald"></i> Export CSV
+          </button>
+          <a href="{% url 'algorithm_lab' %}" class="btn btn-ai-outline-cyan btn-sm" title="Benchmark against NN, 2-Opt, Brute Force in Algorithm Lab">
+            <i class="bi bi-cpu me-1"></i> Algorithm Lab
+          </a>
+        </div>
       </div>
 
       <!-- Metrics Row -->
