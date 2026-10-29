@@ -299,4 +299,33 @@ class TSPTestSuite(TestCase):
         self.assertEqual(tour[-1], 0)
         self.assertEqual(len(set(tour[:-1])), 16) # All 16 unique cities visited exactly once
 
+    # 16. Serverless WSGI entrypoint and WhiteNoise static asset delivery
+    def test_vercel_wsgi_entrypoint_and_static_files(self):
+        from api.index import app
+        from django.test import RequestFactory
+        factory = RequestFactory()
+        
+        # Test CSS static asset returns 200 OK
+        env_css = factory.get('/static/optimizer/css/style.css').environ
+        status_box = []
+        headers_box = []
+        def start_resp(status, headers):
+            status_box.append(status)
+            headers_box.append(dict(headers))
+        
+        app(env_css, start_resp)
+        self.assertTrue(status_box[0].startswith('200'))
+        content_type = headers_box[0].get('content-type', headers_box[0].get('Content-Type', ''))
+        self.assertIn('text/css', content_type)
+        
+        # Test JS static asset returns 200 OK
+        status_box.clear()
+        headers_box.clear()
+        env_js = factory.get('/static/optimizer/js/map.js').environ
+        app(env_js, start_resp)
+        self.assertTrue(status_box[0].startswith('200'))
+        content_type_js = headers_box[0].get('content-type', headers_box[0].get('Content-Type', ''))
+        self.assertIn('javascript', content_type_js)
+
+
 
