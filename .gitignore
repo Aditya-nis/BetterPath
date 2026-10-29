@@ -50,6 +50,3 @@ Thumbs.db
 # SQLite journals
 *.sqlite3-journal
 
-# Django collected static files (built automatically by Vercel)
-staticfiles/
-
