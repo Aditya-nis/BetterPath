@@ -1,0 +1,314 @@
+{% extends 'optimizer/base.html' %}
+{% load static %}
+
+{% block title %}About Project | AI Route Optimization for TSP{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+
+    <!-- Header Banner -->
+    <div class="glass-panel p-4 p-md-5 mb-4 text-center">
+      <span class="badge badge-ai badge-cyan mb-2">Academic AI Microproject Documentation</span>
+      <h1 class="display-6 fw-bold gradient-title mb-3">AI-Based Route Optimization for Travelling Salesman Problem (TSP)</h1>
+      <p class="text-muted lead max-w-75 mx-auto">
+        A comprehensive study and implementation of Genetic Algorithms (GA) and heuristic optimization applied to NP-hard combinatorial path planning across Indian road networks.
+      </p>
+      <div class="d-flex flex-wrap justify-content-center gap-3 mt-4 text-subtle fs-7">
+        <span><i class="bi bi-mortarboard text-cyan me-1"></i> SPPU Third Year Computer Engineering</span>
+        <span><i class="bi bi-cpu text-emerald me-1"></i> Course: Artificial Intelligence</span>
+        <span><i class="bi bi-calendar3 text-amber me-1"></i> Academic Term: 2025-2026</span>
+      </div>
+    </div>
+
+    <!-- Section 1: Aim, Problem Statement & Objectives -->
+    <div class="glass-panel p-4 p-md-5 mb-4">
+      <h3 class="fw-bold text-white mb-4"><i class="bi bi-bullseye text-cyan me-2"></i>1. Project Aim & Objectives</h3>
+      
+      <div class="mb-4">
+        <h5 class="text-cyan fw-bold">Aim</h5>
+        <p class="text-muted">
+          To design, build, and deploy an interactive web-based Artificial Intelligence system capable of solving the Travelling Salesman Problem (TSP) by finding near-optimal shortest closed tour sequences using evolutionary Genetic Algorithms and real-world geographical coordinates.
+        </p>
+      </div>
+
+      <div class="mb-4">
+        <h5 class="text-cyan fw-bold">Problem Statement</h5>
+        <p class="text-muted">
+          Given a discrete list of $N$ cities and their geographical coordinates, find the shortest possible closed-loop tour that visits each city exactly once and returns to the initial departure city, minimizing total travel distance and carbon footprint while overcoming the factorial $O(N!)$ time complexity barrier of brute-force search.
+        </p>
+      </div>
+
+      <div>
+        <h5 class="text-cyan fw-bold">Key Objectives</h5>
+        <div class="row g-3 mt-1">
+          <div class="col-md-6">
+            <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass);">
+              <strong class="text-white d-block mb-1"><i class="bi bi-check2-circle text-emerald me-1"></i> Evolutionary AI Solver</strong>
+              <span class="text-subtle fs-7">Implement pure Python Genetic Algorithm with Tournament Selection, Ordered Crossover (OX1), Swap Mutation, and Elitism.</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass);">
+              <strong class="text-white d-block mb-1"><i class="bi bi-check2-circle text-emerald me-1"></i> Dual-Mode Distance Modeling</strong>
+              <span class="text-subtle fs-7">Provide great-circle Haversine calculations and integrate OSRM (Open Source Routing Machine) road-network routing.</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass);">
+              <strong class="text-white d-block mb-1"><i class="bi bi-check2-circle text-emerald me-1"></i> Mathematical Verification</strong>
+              <span class="text-subtle fs-7">Incorporate exact brute-force verification for &le; 9 cities to scientifically benchmark GA heuristic optimality.</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass);">
+              <strong class="text-white d-block mb-1"><i class="bi bi-check2-circle text-emerald me-1"></i> Interactive Geospatial Dashboard</strong>
+              <span class="text-subtle fs-7">Interactive Leaflet.js mapping, Chart.js convergence analytics, and SQLite persistence.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Introduction to TSP & Complexity -->
+    <div class="glass-panel p-4 p-md-5 mb-4">
+      <h3 class="fw-bold text-white mb-4"><i class="bi bi-diagram-3 text-cyan me-2"></i>2. Travelling Salesman Problem (TSP) & NP-Hard Complexity</h3>
+      <p class="text-muted">
+        The Travelling Salesman Problem is one of the most intensively studied combinatorial optimization problems in computer science and operations research. It belongs to the class of <strong>NP-hard</strong> problems.
+      </p>
+      <p class="text-muted">
+        For $N$ cities with a fixed starting origin, the number of possible distinct permutations is given by:
+      </p>
+      <div class="p-3 rounded-3 text-center my-3" style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-glass); font-family: 'JetBrains Mono', monospace;">
+        <span class="fs-5 text-cyan">Search Space = \frac{(N - 1)!}{2} &nbsp; \text{(for undirected graphs)}</span>
+      </div>
+      <div class="table-responsive mt-3">
+        <table class="table table-ai table-sm">
+          <thead>
+            <tr>
+              <th>Cities (N)</th>
+              <th>Possible Permutations</th>
+              <th>Brute-Force Feasibility</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>5</td><td>24</td><td><span class="badge badge-ai badge-emerald">Microseconds</span></td></tr>
+            <tr><td>9</td><td>40,320</td><td><span class="badge badge-ai badge-emerald">&lt; 0.05 seconds</span></td></tr>
+            <tr><td>15</td><td>43,589,145,600</td><td><span class="badge badge-ai badge-amber">Hours</span></td></tr>
+            <tr><td>25</td><td>3.1 &times; 10<sup>23</sup></td><td><span class="badge badge-ai badge-rose">Millions of Years (Impossible)</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-subtle fs-7 mt-2">
+        This astronomical growth proves why exact brute force is intractable for large networks, necessitating AI metaheuristic algorithms like Genetic Algorithms that converge on high-quality solutions in fractional seconds.
+      </p>
+    </div>
+
+    <!-- Section 3: Genetic Algorithm Details & Flowchart -->
+    <div class="glass-panel p-4 p-md-5 mb-4">
+      <h3 class="fw-bold text-white mb-4"><i class="bi bi-gear-wide-connected text-cyan me-2"></i>3. Genetic Algorithm Engineering</h3>
+      
+      <div class="row g-4 mb-4">
+        <div class="col-md-6">
+          <div class="p-3 rounded-3 h-100" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <h6 class="text-white fw-bold"><i class="bi bi-1-circle text-cyan me-1"></i> Chromosome Representation</h6>
+            <p class="text-muted fs-7 mb-0">
+              Each candidate solution is an ordered list of city indices representing the intermediate sequence. The departure hub (index 0) remains permanently anchored at the beginning and end of the closed tour.
+            </p>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3 h-100" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <h6 class="text-white fw-bold"><i class="bi bi-2-circle text-cyan me-1"></i> Fitness Evaluation</h6>
+            <p class="text-muted fs-7 mb-0">
+              Fitness is inversely proportional to total tour distance: $f(x) = \frac{1}{\text{Distance}(x)}$. Individuals with shorter paths possess higher evolutionary fitness.
+            </p>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3 h-100" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <h6 class="text-white fw-bold"><i class="bi bi-3-circle text-cyan me-1"></i> Tournament Selection</h6>
+            <p class="text-muted fs-7 mb-0">
+              $k=5$ individuals are randomly chosen from the population, and the fittest among them is selected as a parent. This maintains evolutionary pressure while preserving genetic diversity.
+            </p>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3 h-100" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <h6 class="text-white fw-bold"><i class="bi bi-4-circle text-cyan me-1"></i> Ordered Crossover (OX1)</h6>
+            <p class="text-muted fs-7 mb-0">
+              Preserves a contiguous sub-tour from Parent 1 and fills the remaining slots from Parent 2 in rotational order without duplicating or omitting any city.
+            </p>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3 h-100" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <h6 class="text-white fw-bold"><i class="bi bi-5-circle text-cyan me-1"></i> Swap Mutation</h6>
+            <p class="text-muted fs-7 mb-0">
+              With probability $P_m = 0.05$, two random cities in the chromosome exchange positions, introducing stochastic mutations to escape local optima.
+            </p>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3 h-100" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <h6 class="text-white fw-bold"><i class="bi bi-6-circle text-cyan me-1"></i> Elitism Preservation</h6>
+            <p class="text-muted fs-7 mb-0">
+              The top $E=2$ elite individuals survive directly into the next generation without modification, guaranteeing that the best-found route distance monotonically non-increases.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Flowchart Diagram -->
+      <h5 class="text-cyan fw-bold mb-3">Genetic Algorithm Workflow</h5>
+      <div class="row g-2 text-center">
+        <div class="col-6 col-md-3">
+          <div class="flowchart-step h-100">
+            <span class="flowchart-step-number">1</span>
+            <strong class="text-white d-block fs-7">Input Cities</strong>
+            <span class="text-subtle fs-8">Load coordinates & distance matrix</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="flowchart-step h-100">
+            <span class="flowchart-step-number">2</span>
+            <strong class="text-white d-block fs-7">Initial Pop</strong>
+            <span class="text-subtle fs-8">Random permutations + heuristic seeds</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="flowchart-step h-100">
+            <span class="flowchart-step-number">3</span>
+            <strong class="text-white d-block fs-7">Fitness Eval</strong>
+            <span class="text-subtle fs-8">Calculate round-trip km distance</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="flowchart-step h-100">
+            <span class="flowchart-step-number">4</span>
+            <strong class="text-white d-block fs-7">Selection</strong>
+            <span class="text-subtle fs-8">Tournament selection (k=5)</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="flowchart-step h-100">
+            <span class="flowchart-step-number">5</span>
+            <strong class="text-white d-block fs-7">OX1 Crossover</strong>
+            <span class="text-subtle fs-8">Ordered sub-tour inheritance</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="flowchart-step h-100">
+            <span class="flowchart-step-number">6</span>
+            <strong class="text-white d-block fs-7">Swap Mutation</strong>
+            <span class="text-subtle fs-8">Stochastic perturbation (Pm=0.05)</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="flowchart-step h-100">
+            <span class="flowchart-step-number">7</span>
+            <strong class="text-white d-block fs-7">Elitism</strong>
+            <span class="text-subtle fs-8">Preserve best 2 chromosomes</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="flowchart-step h-100">
+            <span class="flowchart-step-number">8</span>
+            <strong class="text-white d-block fs-7">Termination</strong>
+            <span class="text-subtle fs-8">Generations reached &rarr; Best route</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: System Architecture & Technologies -->
+    <div class="glass-panel p-4 p-md-5 mb-4">
+      <h3 class="fw-bold text-white mb-4"><i class="bi bi-stack text-cyan me-2"></i>4. Technologies & Architecture</h3>
+      
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <span class="badge badge-ai badge-cyan mb-2">Frontend Stack</span>
+            <ul class="list-unstyled text-muted fs-7 mb-0">
+              <li><i class="bi bi-check text-cyan"></i> HTML5 & CSS3 Glassmorphism</li>
+              <li><i class="bi bi-check text-cyan"></i> Vanilla JavaScript (ES6 Modules)</li>
+              <li><i class="bi bi-check text-cyan"></i> Bootstrap 5.3 (Responsive Grid)</li>
+              <li><i class="bi bi-check text-cyan"></i> Leaflet.js & OpenStreetMap</li>
+              <li><i class="bi bi-check text-cyan"></i> Chart.js 4 (Convergence Charts)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <span class="badge badge-ai badge-emerald mb-2">Backend Stack</span>
+            <ul class="list-unstyled text-muted fs-7 mb-0">
+              <li><i class="bi bi-check text-emerald"></i> Python 3.11+</li>
+              <li><i class="bi bi-check text-emerald"></i> Django Web Framework</li>
+              <li><i class="bi bi-check text-emerald"></i> Django ORM & SQLite3</li>
+              <li><i class="bi bi-check text-emerald"></i> RESTful JSON API Endpoints</li>
+              <li><i class="bi bi-check text-emerald"></i> CSRF & Input Sanitization</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <span class="badge badge-ai badge-amber mb-2">AI & Services</span>
+            <ul class="list-unstyled text-muted fs-7 mb-0">
+              <li><i class="bi bi-check text-amber"></i> NumPy (Vectorized Distance Matrix)</li>
+              <li><i class="bi bi-check text-amber"></i> Great-Circle Haversine Formula</li>
+              <li><i class="bi bi-check text-amber"></i> OSRM Routing Service</li>
+              <li><i class="bi bi-check text-amber"></i> Combinatorial Permutations Solver</li>
+              <li><i class="bi bi-check text-amber"></i> In-Memory Distance Caching</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 5: Real-World Applications, Advantages & Limitations -->
+    <div class="glass-panel p-4 p-md-5 mb-4">
+      <h3 class="fw-bold text-white mb-4"><i class="bi bi-briefcase text-cyan me-2"></i>5. Practical Applications & Analysis</h3>
+      
+      <div class="row g-4">
+        <div class="col-md-4">
+          <h5 class="text-white fw-bold"><i class="bi bi-truck text-cyan me-1"></i> Applications</h5>
+          <ul class="text-muted fs-7 ps-3">
+            <li>E-Commerce last-mile parcel delivery routing</li>
+            <li>Public transit & school bus fleet scheduling</li>
+            <li>PCB drilling & CNC machining head path optimization</li>
+            <li>Emergency medical dispatch & aid distribution</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h5 class="text-white fw-bold"><i class="bi bi-hand-thumbs-up text-emerald me-1"></i> Advantages</h5>
+          <ul class="text-muted fs-7 ps-3">
+            <li>Rapid convergence compared to exhaustive search</li>
+            <li>Escapes local minima via stochastic mutation</li>
+            <li>Scalable to large numbers of waypoints</li>
+            <li>Supports arbitrary distance matrices (geodesic or road)</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h5 class="text-white fw-bold"><i class="bi bi-exclamation-triangle text-amber me-1"></i> Limitations</h5>
+          <ul class="text-muted fs-7 ps-3">
+            <li>Stochastic metaheuristic: yields near-optimal, not guaranteed global optimum for large N</li>
+            <li>Dependent on parameter tuning ($P_m$, generations, pop size)</li>
+            <li>External road APIs subject to network availability & rate limits</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 6: Conclusion -->
+    <div class="glass-panel p-4 p-md-5 mb-4 text-center">
+      <h4 class="fw-bold text-white mb-2">Conclusion</h4>
+      <p class="text-muted max-w-75 mx-auto mb-0">
+        This project demonstrates how nature-inspired evolutionary Artificial Intelligence effectively solves complex combinatorial optimization challenges. By combining Genetic Algorithms with real-world spatial APIs and a modern responsive user experience, the system provides practical, measurable travel distance and carbon reductions.
+      </p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

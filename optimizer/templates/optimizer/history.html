@@ -1,0 +1,197 @@
+{% extends 'optimizer/base.html' %}
+{% load static %}
+
+{% block title %}Optimization History | AI Travelling Salesman Problem{% endblock %}
+
+{% block content %}
+<div class="glass-panel p-4 mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+    <div>
+      <div class="d-flex align-items-center mb-1">
+        <span class="badge badge-ai badge-cyan me-2"><i class="bi bi-database me-1"></i> SQLite Persistence</span>
+        <span class="text-subtle fs-7">Real-time recorded runs</span>
+      </div>
+      <h2 class="fw-bold gradient-title mb-0">Optimization Run History</h2>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'api_export_history' %}" class="btn btn-ai-primary btn-sm">
+        <i class="bi bi-download me-1"></i> Export All to CSV
+      </a>
+      <a href="{% url 'optimizer' %}" class="btn btn-ai-outline-cyan btn-sm">
+        <i class="bi bi-plus-circle me-1"></i> New Optimization
+      </a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-ai">
+      <thead>
+        <tr>
+          <th>Run ID</th>
+          <th>Date & Time</th>
+          <th>Origin Hub</th>
+          <th>Cities</th>
+          <th>Distance Mode</th>
+          <th>Initial Distance</th>
+          <th>Optimized Distance</th>
+          <th>Distance Saved</th>
+          <th>Improvement</th>
+          <th>Exec Time</th>
+          <th>Brute Force</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in runs %}
+        <tr>
+          <td><span class="badge badge-ai badge-cyan">#{{ r.id }}</span></td>
+          <td class="text-subtle fs-7">{{ r.created_at|date:"Y-m-d H:i" }}</td>
+          <td class="fw-bold text-white">{{ r.starting_city }}</td>
+          <td><span class="badge bg-secondary bg-opacity-50 text-white">{{ r.selected_cities|length }} cities</span></td>
+          <td>
+            <span class="badge badge-ai {% if r.distance_mode == 'road' %}badge-emerald{% else %}badge-cyan{% endif %}">
+              <i class="bi {% if r.distance_mode == 'road' %}bi-car-front-fill{% else %}bi-globe-americas{% endif %} me-1"></i>
+              {{ r.get_distance_mode_display }}
+            </span>
+          </td>
+          <td class="text-danger fw-semibold">{{ r.initial_distance }} km</td>
+          <td class="text-success fw-bold">{{ r.optimized_distance }} km</td>
+          <td class="text-cyan fw-semibold">{{ r.distance_saved }} km</td>
+          <td>
+            <span class="badge badge-ai badge-emerald">+{{ r.improvement_percentage }}%</span>
+          </td>
+          <td class="text-subtle fs-7">{{ r.execution_time }}s</td>
+          <td>
+            {% if r.brute_force_verified %}
+              <span class="badge badge-ai badge-amber" title="Mathematically Verified Optimal">
+                <i class="bi bi-patch-check-fill me-1"></i> Exact {{ r.brute_force_distance }}km
+              </span>
+            {% else %}
+              <span class="text-subtle fs-8">N/A</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-ai-secondary btn-sm px-2 py-1 btn-view-run" data-run-id="{{ r.id }}">
+              <i class="bi bi-eye"></i> Details
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="12" class="text-center py-5 text-muted">
+            <i class="bi bi-clock-history fs-1 opacity-25 d-block mb-3"></i>
+            <h5>No Optimization Runs Logged Yet</h5>
+            <p class="fs-7">Run the Genetic Algorithm optimizer to record historical routes.</p>
+            <a href="{% url 'optimizer' %}" class="btn btn-ai-primary btn-sm mt-2">
+              <i class="bi bi-play-circle me-1"></i> Go to Optimizer
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Run Details Modal -->
+<div class="modal fade" id="runDetailsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content glass-panel" style="background: rgba(13, 22, 41, 0.95); border: 1px solid var(--accent-cyan);">
+      <div class="modal-header border-bottom border-secondary border-opacity-25">
+        <h5 class="modal-title text-white fw-bold" id="runModalTitle">
+          <i class="bi bi-info-circle text-cyan me-2"></i>Run Details
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="runModalBody">
+        <div class="text-center py-4">
+          <div class="spinner-border text-cyan" role="status"></div>
+        </div>
+      </div>
+      <div class="modal-footer border-top border-secondary border-opacity-25">
+        <button type="button" class="btn btn-ai-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.querySelectorAll('.btn-view-run').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const runId = btn.getAttribute('data-run-id');
+      const modalEl = document.getElementById('runDetailsModal');
+      const modalTitle = document.getElementById('runModalTitle');
+      const modalBody = document.getElementById('runModalBody');
+      const bsModal = new bootstrap.Modal(modalEl);
+      
+      modalTitle.innerText = `Optimization Run #${runId}`;
+      modalBody.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-cyan" role="status"></div></div>';
+      bsModal.show();
+
+      try {
+        const res = await fetch(`/api/history/${runId}/`);
+        const data = await res.json();
+        if (data.success) {
+          const initTourStr = data.initial_route.map(c => c.name).join(' &rarr; ');
+          const optTourStr = data.optimized_route.map(c => c.name).join(' &rarr; ');
+          
+          modalBody.innerHTML = `
+            <div class="row g-3 mb-3">
+              <div class="col-sm-6">
+                <span class="text-muted fs-7 d-block">Origin Hub</span>
+                <strong class="text-white fs-5">${data.starting_city}</strong>
+              </div>
+              <div class="col-sm-6 text-sm-end">
+                <span class="text-muted fs-7 d-block">Execution Mode</span>
+                <span class="badge badge-ai ${data.distance_mode === 'road' ? 'badge-emerald' : 'badge-cyan'}">${data.distance_mode.toUpperCase()}</span>
+              </div>
+            </div>
+            
+            <div class="row g-2 text-center mb-3 p-2 rounded-2" style="background: rgba(15, 23, 42, 0.7);">
+              <div class="col-3">
+                <span class="text-muted fs-8">Initial Dist</span>
+                <div class="text-danger fw-bold">${data.initial_distance} km</div>
+              </div>
+              <div class="col-3">
+                <span class="text-muted fs-8">Optimized Dist</span>
+                <div class="text-success fw-bold">${data.optimized_distance} km</div>
+              </div>
+              <div class="col-3">
+                <span class="text-muted fs-8">Saved</span>
+                <div class="text-cyan fw-bold">${data.distance_saved} km</div>
+              </div>
+              <div class="col-3">
+                <span class="text-muted fs-8">Improvement</span>
+                <div class="text-emerald fw-bold">+${data.improvement_percentage}%</div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fs-7 text-muted">Initial Route Order</label>
+              <div class="route-sequence-box p-2 fs-8">${initTourStr}</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fs-7 text-muted">Optimized AI Route Order</label>
+              <div class="route-sequence-box p-2 fs-8 text-success">${optTourStr}</div>
+            </div>
+
+            ${data.brute_force_verified ? `
+              <div class="p-2 rounded-2 bg-success bg-opacity-10 border border-success border-opacity-25 fs-8 text-white">
+                <i class="bi bi-patch-check-fill text-success me-1"></i>
+                <strong>Brute Force Verified Global Optimum:</strong> ${data.brute_force_distance} km
+              </div>
+            ` : ''}
+          `;
+        } else {
+          modalBody.innerHTML = '<div class="alert alert-danger">Failed to fetch run details.</div>';
+        }
+      } catch (err) {
+        modalBody.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,413 @@
+{% extends 'optimizer/base.html' %}
+{% load static %}
+
+{% block title %}Route Optimizer | AI Travelling Salesman Problem{% endblock %}
+
+{% block content %}
+<div class="row g-4 position-relative">
+  
+  <!-- Loading Spinner Overlay -->
+  <div id="optimizationSpinner">
+    <div class="pulse-spinner mb-3"></div>
+    <h5 class="text-white fw-bold mb-1">Genetic Algorithm in Progress...</h5>
+    <p class="text-cyan fs-7 mb-0" id="spinnerText">Evaluating chromosomes & calculating route fitness</p>
+  </div>
+
+  <!-- Left Column: Controls & City Selection -->
+  <div class="col-lg-4">
+    
+    <!-- City Selection Card -->
+    <div class="glass-panel p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0 text-white">
+          <i class="bi bi-geo-alt-fill text-cyan me-2"></i>City Selection
+        </h5>
+        <span class="badge badge-ai badge-cyan" id="selectedCountBadge">0 Cities</span>
+      </div>
+
+      <!-- Interactive City Search & Live Geocoding -->
+      <div class="mb-3 position-relative">
+        <label class="form-label d-flex justify-content-between align-items-center mb-1">
+          <span><i class="bi bi-search text-cyan me-1"></i>Search & Add Any City</span>
+          <span class="badge badge-ai badge-cyan" style="font-size: 0.7rem;"><i class="bi bi-geo-alt-fill me-1"></i>Live Geocode</span>
+        </label>
+        <div class="input-group">
+          <span class="input-group-text bg-transparent text-cyan" style="border-color: rgba(56, 189, 248, 0.25);">
+            <i class="bi bi-building"></i>
+          </span>
+          <input type="text" class="form-control" id="googlePlacesInput" placeholder="Type city name (e.g., Delhi, Pune, Nashik, London)..." autocomplete="off">
+          <button class="btn btn-ai-outline-cyan" type="button" id="btnAddCityBySearch" title="Search and add this city">
+            <i class="bi bi-plus-lg"></i> Add
+          </button>
+        </div>
+        <!-- Live Suggestions Dropdown Popup -->
+        <div id="searchSuggestionsBox" class="list-group position-absolute w-100 shadow-lg" style="display: none; z-index: 1050; max-height: 220px; overflow-y: auto; margin-top: 2px;"></div>
+        <small class="text-subtle fs-8 d-block mt-1">Type any city name and click <strong>Add</strong> or select from instant suggestions. Works with local database & OpenStreetMap.</small>
+      </div>
+
+      <!-- Datasets & Presets Action Group -->
+      <div class="mb-3">
+        <label class="form-label d-flex justify-content-between align-items-center mb-1">
+          <span><i class="bi bi-collection text-emerald me-1"></i>Preset Datasets</span>
+          <span class="badge badge-ai badge-emerald" style="font-size: 0.7rem;">7 Curated Datasets</span>
+        </label>
+        <div class="d-flex flex-wrap gap-2">
+          <div class="dropdown flex-grow-1">
+            <button class="btn btn-ai-secondary btn-sm dropdown-toggle w-100 text-start d-flex justify-content-between align-items-center" type="button" id="presetDatasetsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <span><i class="bi bi-database-fill me-1 text-cyan"></i> Select Dataset...</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-dark glass-panel p-2 shadow-lg w-100" aria-labelledby="presetDatasetsDropdown" id="presetDatasetsMenu">
+              <li><h6 class="dropdown-header text-cyan fw-bold">Maharashtra Circuits</h6></li>
+              <li><a class="dropdown-item py-2 rounded-2 preset-option-btn" href="#" data-preset-id="maharashtra_8"><i class="bi bi-check2-circle text-cyan me-2"></i>Maharashtra Core (8 Cities)</a></li>
+              <li><a class="dropdown-item py-2 rounded-2 preset-option-btn" href="#" data-preset-id="maharashtra_16"><i class="bi bi-check2-circle text-cyan me-2"></i>Maharashtra Grand Tour (16 Cities)</a></li>
+              <li><hr class="dropdown-divider border-secondary opacity-25"></li>
+              <li><h6 class="dropdown-header text-emerald fw-bold">All-India Benchmarks</h6></li>
+              <li><a class="dropdown-item py-2 rounded-2 preset-option-btn" href="#" data-preset-id="india_metros_10"><i class="bi bi-check2-circle text-emerald me-2"></i>Top Indian Metros (10 Cities)</a></li>
+              <li><a class="dropdown-item py-2 rounded-2 preset-option-btn" href="#" data-preset-id="india_grand_20"><i class="bi bi-check2-circle text-emerald me-2"></i>Pan-India Grand Tour (20 Cities)</a></li>
+              <li><a class="dropdown-item py-2 rounded-2 preset-option-btn" href="#" data-preset-id="north_india_8"><i class="bi bi-check2-circle text-emerald me-2"></i>North India Heritage (8 Cities)</a></li>
+              <li><a class="dropdown-item py-2 rounded-2 preset-option-btn" href="#" data-preset-id="south_india_8"><i class="bi bi-check2-circle text-emerald me-2"></i>South India Tech & Coastal (8 Cities)</a></li>
+              <li><hr class="dropdown-divider border-secondary opacity-25"></li>
+              <li><h6 class="dropdown-header text-amber fw-bold">International Tour</h6></li>
+              <li><a class="dropdown-item py-2 rounded-2 preset-option-btn" href="#" data-preset-id="world_capitals_10"><i class="bi bi-check2-circle text-amber me-2"></i>Global Megacities (10 Cities)</a></li>
+            </ul>
+          </div>
+          <button type="button" class="btn btn-ai-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#customCityModal" title="Enter manual coordinates">
+            <i class="bi bi-plus-circle me-1 text-emerald"></i> Lat/Lng
+          </button>
+          <button type="button" class="btn btn-outline-danger btn-sm" id="btnResetCities" title="Reset selection">
+            <i class="bi bi-trash3"></i> Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Dropdown selector to add from database -->
+      <div class="mb-3">
+        <label class="form-label d-flex justify-content-between align-items-center mb-1">
+          <span>Add From Database (50+ Cities)</span>
+          <span class="text-subtle fs-8" id="dbCityCountLabel">Available Cities</span>
+        </label>
+        <div class="input-group">
+          <select class="form-select" id="cityDropdown">
+            <option value="" disabled selected>Choose a city from database...</option>
+          </select>
+          <button class="btn btn-ai-outline-cyan" type="button" id="btnAddDropdownCity">
+            <i class="bi bi-plus-lg"></i> Add
+          </button>
+        </div>
+      </div>
+
+      <!-- Starting City Selector -->
+      <div class="mb-3">
+        <label class="form-label d-flex justify-content-between align-items-center">
+          <span>Starting & Return City (Origin Hub)</span>
+          <i class="bi bi-flag-fill text-amber" title="Starting hub stays fixed"></i>
+        </label>
+        <select class="form-select" id="startCitySelect">
+          <option value="" disabled selected>Select starting city...</option>
+        </select>
+        <small class="text-subtle fs-8 d-block mt-1">Route departs from and returns to this origin.</small>
+      </div>
+
+      <!-- Selected Cities Chip List -->
+      <label class="form-label">Active Tour Cities (Min 3 required)</label>
+      <div id="selectedCitiesContainer" class="p-2 rounded-3 mb-2" style="background: rgba(15, 23, 42, 0.7); min-height: 85px; border: 1px dashed rgba(56, 189, 248, 0.25);">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+
+    <!-- Algorithm Settings Card -->
+    <div class="glass-panel p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0 text-white">
+          <i class="bi bi-sliders text-cyan me-2"></i>Algorithm Config
+        </h5>
+        <button class="btn btn-link btn-sm text-cyan p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#advancedConfig">
+          Toggle Settings
+        </button>
+      </div>
+
+      <!-- Distance Mode Switcher -->
+      <div class="mb-3">
+        <label class="form-label d-block">Distance Metric</label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="distanceModeRadio" id="modeGeographic" value="geographic" checked>
+          <label class="btn btn-outline-info text-start py-2 fs-7" for="modeGeographic">
+            <i class="bi bi-globe-americas d-block fs-5 mb-1"></i>
+            <strong>Haversine</strong>
+            <small class="d-block text-muted">Geodesic (km)</small>
+          </label>
+
+          <input type="radio" class="btn-check" name="distanceModeRadio" id="modeRoad" value="road">
+          <label class="btn btn-outline-info text-start py-2 fs-7" for="modeRoad">
+            <i class="bi bi-car-front-fill d-block fs-5 mb-1"></i>
+            <strong>OSRM Road</strong>
+            <small class="d-block text-muted">Driving Route</small>
+          </label>
+        </div>
+      </div>
+
+      <div class="collapse show" id="advancedConfig">
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label fs-8 text-muted">Population Size</label>
+            <input type="number" class="form-control form-control-sm" id="inputPopSize" value="100" min="20" max="500">
+          </div>
+          <div class="col-6">
+            <label class="form-label fs-8 text-muted">Max Generations</label>
+            <input type="number" class="form-control form-control-sm" id="inputGenerations" value="300" min="30" max="1000">
+          </div>
+        </div>
+
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label fs-8 text-muted">Mutation Rate</label>
+            <input type="number" class="form-control form-control-sm" id="inputMutationRate" value="0.05" step="0.01" min="0.01" max="0.5">
+          </div>
+          <div class="col-6">
+            <label class="form-label fs-8 text-muted">Random Seed (Opt)</label>
+            <input type="number" class="form-control form-control-sm" id="inputSeed" placeholder="e.g. 42">
+          </div>
+        </div>
+
+        <div class="p-2 rounded-2 mt-2" style="background: rgba(15, 23, 42, 0.6); font-size: 0.78rem; color: #94a3b8;">
+          <div><i class="bi bi-check2 text-cyan me-1"></i> Selection: <strong>Tournament (k=5)</strong></div>
+          <div><i class="bi bi-check2 text-cyan me-1"></i> Crossover: <strong>Ordered Crossover (OX1)</strong></div>
+          <div><i class="bi bi-check2 text-cyan me-1"></i> Mutation: <strong>Swap Mutation</strong></div>
+          <div><i class="bi bi-check2 text-cyan me-1"></i> Elitism: <strong>Top 2 Individuals Retained</strong></div>
+        </div>
+
+        <!-- Optional Brute Force verification toggle for <= 9 cities -->
+        <div class="form-check form-switch mt-3">
+          <input class="form-check-input" type="checkbox" id="checkBruteForce">
+          <label class="form-check-label fs-7 text-white" for="checkBruteForce">
+            Verify with Brute-Force (for &le; 9 cities)
+          </label>
+          <small class="text-subtle d-block fs-8">Evaluates all (N-1)! permutations to mathematically verify global optimum.</small>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <button type="button" class="btn btn-ai-primary w-100 py-3 mt-4 fs-6" id="btnRunOptimizer">
+        <i class="bi bi-lightning-charge-fill me-1"></i> Run AI Route Optimization
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Right Column: Interactive Map & Results -->
+  <div class="col-lg-8">
+    
+    <!-- Map Container Card -->
+    <div class="glass-panel p-3 mb-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 px-2 gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <h5 class="fw-bold mb-0 text-white">
+            <i class="bi bi-map-fill text-cyan me-2"></i>Interactive Route Map
+          </h5>
+          <!-- Map Engine Toggle -->
+          <div class="btn-group btn-group-sm" role="group" aria-label="Map Engine">
+            <input type="radio" class="btn-check" name="mapEngineRadio" id="engineLeaflet" value="leaflet" checked>
+            <label class="btn btn-outline-info px-2 py-1 fs-8" for="engineLeaflet">
+              <i class="bi bi-map me-1"></i>World Streets & Roads
+            </label>
+            <input type="radio" class="btn-check" name="mapEngineRadio" id="engineGoogle" value="google">
+            <label class="btn btn-outline-info px-2 py-1 fs-8" for="engineGoogle">
+              <i class="bi bi-google me-1"></i>Google Maps
+            </label>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-ai-secondary btn-sm" id="btnFitMap" title="Fit all cities in view">
+            <i class="bi bi-aspect-ratio me-1"></i> Fit View
+          </button>
+          <button class="btn btn-ai-secondary btn-sm" id="btnExportPng" title="Export Route View as PNG Image">
+            <i class="bi bi-camera me-1"></i> Export PNG
+          </button>
+        </div>
+      </div>
+
+      <div class="map-viewport-wrapper">
+        <div id="mapContainer"></div>
+        <div id="googleMapContainer" style="display: none;"></div>
+      </div>
+
+      <!-- Live Map Mode & Legend Ribbon -->
+      <div class="d-flex flex-wrap justify-content-between align-items-center mt-2 px-2 text-subtle fs-7">
+        <div class="d-flex align-items-center gap-3">
+          <div class="d-flex align-items-center">
+            <span style="display:inline-block; width:14px; height:4px; background:#ef4444; margin-right:5px; border-radius:2px;"></span>
+            <span>Initial Route</span>
+          </div>
+          <div class="d-flex align-items-center">
+            <span style="display:inline-block; width:14px; height:4px; background:#10b981; margin-right:5px; border-radius:2px;"></span>
+            <span>Optimized Route</span>
+          </div>
+          <div class="d-flex align-items-center">
+            <span style="display:inline-block; width:10px; height:10px; background:#f59e0b; border-radius:50%; margin-right:5px;"></span>
+            <span>Starting Hub</span>
+          </div>
+          <div class="d-flex align-items-center">
+            <span style="display:inline-block; width:10px; height:10px; background:#0284c7; border-radius:50%; margin-right:5px;"></span>
+            <span>Cities</span>
+          </div>
+        </div>
+        <div id="activeDistanceModeLabel" class="badge badge-ai badge-cyan">
+          Mode: Geographic (Haversine)
+        </div>
+      </div>
+    </div>
+
+    <!-- Optimization Results Display Section -->
+    <div id="resultsCard" class="glass-panel p-4 mb-4" style="display: none;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <span class="badge badge-ai badge-emerald mb-1">Optimization Complete</span>
+          <h4 class="fw-bold mb-0 text-white">AI ROUTE OPTIMIZATION RESULT</h4>
+        </div>
+        <button class="btn btn-ai-secondary btn-sm" id="btnExportResultCsv">
+          <i class="bi bi-file-earmark-spreadsheet me-1 text-cyan"></i> Export CSV
+        </button>
+      </div>
+
+      <!-- Metrics Row -->
+      <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-md-3">
+          <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <span class="text-muted fs-8 text-uppercase d-block">Initial Route</span>
+            <div class="fs-4 fw-bold text-danger" id="resInitialDistance">-- km</div>
+            <small class="text-subtle fs-8">Baseline order</small>
+          </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+          <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <span class="text-muted fs-8 text-uppercase d-block">AI Optimized</span>
+            <div class="fs-4 fw-bold text-success" id="resOptimizedDistance">-- km</div>
+            <small class="text-subtle fs-8">Genetic Algorithm</small>
+          </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+          <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <span class="text-muted fs-8 text-uppercase d-block">Distance Saved</span>
+            <div class="fs-4 fw-bold text-cyan" id="resDistanceSaved">-- km</div>
+            <small class="text-subtle fs-8">Direct reduction</small>
+          </div>
+        </div>
+        <div class="col-sm-6 col-md-3">
+          <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <span class="text-muted fs-8 text-uppercase d-block">Improvement</span>
+            <div class="fs-4 fw-bold text-emerald" id="resImprovementPct">--%</div>
+            <small class="text-subtle fs-8" id="resExecTime">Time: --s</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Route Sequences Comparison -->
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fs-7 text-muted">
+            <i class="bi bi-x-circle text-danger me-1"></i> Initial Route Sequence
+          </label>
+          <div class="route-sequence-box" id="resInitialRouteSeq"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fs-7 text-muted">
+            <i class="bi bi-check-circle-fill text-success me-1"></i> AI-Optimized Route Sequence
+          </label>
+          <div class="route-sequence-box" id="resOptimizedRouteSeq"></div>
+        </div>
+      </div>
+
+      <!-- Brute-Force Mathematical Verification Alert Box -->
+      <div id="bruteForceCard" class="p-3 rounded-3 mb-3" style="display: none; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);">
+        <div class="d-flex align-items-center mb-1">
+          <i class="bi bi-patch-check-fill text-emerald fs-4 me-2"></i>
+          <h6 class="mb-0 text-white fw-bold">Mathematical Brute-Force Verification (Global Optimum)</h6>
+        </div>
+        <div class="fs-7 text-muted" id="bruteForceDetails">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Visualization Charts Card -->
+    <div id="chartsContainer" class="glass-panel p-4 mb-4" style="display: none;">
+      <h5 class="fw-bold mb-3 text-white">
+        <i class="bi bi-graph-up text-cyan me-2"></i>Algorithm Visualization & Convergence
+      </h5>
+      
+      <div class="row g-4">
+        <!-- Chart 1: GA Convergence -->
+        <div class="col-lg-7">
+          <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-white fw-semibold fs-7">Chart 1: Genetic Algorithm Convergence</span>
+              <span class="text-subtle fs-8">Generation vs Best Distance (km)</span>
+            </div>
+            <div style="height: 250px;">
+              <canvas id="convergenceChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart 2: Route Comparison -->
+        <div class="col-lg-5">
+          <div class="p-3 rounded-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-white fw-semibold fs-7">Chart 2: Route Distance Comparison</span>
+              <span class="text-subtle fs-8">Initial vs Optimized (km)</span>
+            </div>
+            <div style="height: 250px;">
+              <canvas id="comparisonChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: Add Custom Coordinates City -->
+<div class="modal fade" id="customCityModal" tabindex="-1" aria-labelledby="customCityModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content glass-panel" style="background: rgba(13, 22, 41, 0.95); border: 1px solid var(--accent-cyan);">
+      <div class="modal-header border-bottom border-secondary border-opacity-25">
+        <h5 class="modal-title text-white fw-bold" id="customCityModalLabel">
+          <i class="bi bi-geo-alt text-cyan me-2"></i>Add Custom City Coordinates
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="customCityForm">
+          <div class="mb-3">
+            <label class="form-label" for="customCityName">City Name</label>
+            <input type="text" class="form-control" id="customCityName" placeholder="e.g. Shirdi" required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label" for="customCityLat">Latitude</label>
+              <input type="number" step="0.0001" min="-90" max="90" class="form-control" id="customCityLat" placeholder="19.7667" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label" for="customCityLng">Longitude</label>
+              <input type="number" step="0.0001" min="-180" max="180" class="form-control" id="customCityLng" placeholder="74.4762" required>
+            </div>
+          </div>
+          <small class="text-subtle d-block">Coordinates are strictly validated (-90 to 90 lat, -180 to 180 lng).</small>
+        </form>
+      </div>
+      <div class="modal-footer border-top border-secondary border-opacity-25">
+        <button type="button" class="btn btn-ai-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-ai-primary" id="btnSaveCustomCity">Save & Add City</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'optimizer/js/map.js' %}"></script>
+<script src="{% static 'optimizer/js/charts.js' %}"></script>
+<script src="{% static 'optimizer/js/main.js' %}"></script>
+{% endblock %}

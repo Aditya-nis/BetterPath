@@ -1,0 +1,234 @@
+{% extends 'optimizer/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard | AI Route Optimization for TSP{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+  <div class="col-lg-8">
+    <div class="d-flex align-items-center mb-2">
+      <span class="badge badge-ai badge-cyan me-2"><i class="bi bi-stars me-1"></i> AI & Metaheuristics</span>
+      <span class="badge badge-ai badge-emerald"><i class="bi bi-mortarboard me-1"></i> SPPU AI Microproject</span>
+    </div>
+    <h1 class="display-6 fw-bold gradient-title mb-2">AI-Based Route Optimization for TSP</h1>
+    <p class="text-muted lead mb-0">
+      Solve the NP-hard Travelling Salesman Problem interactively using an evolutionary Genetic Algorithm with tournament selection, ordered crossover, swap mutation, and real road-network routing.
+    </p>
+  </div>
+  <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+    <a href="{% url 'optimizer' %}" class="btn btn-ai-primary btn-lg shadow-lg">
+      <i class="bi bi-play-circle-fill me-2"></i> Start Optimization
+    </a>
+  </div>
+</div>
+
+<!-- Aggregated Backend Statistics Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-6 col-xl-3">
+    <div class="glass-panel metric-card">
+      <i class="bi bi-rocket-takeoff metric-icon"></i>
+      <div class="metric-label">Total Optimizations</div>
+      <div class="metric-value">{{ stats.total_runs }}</div>
+      <div class="text-subtle fs-7 mt-1">Runs executed & stored</div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-3">
+    <div class="glass-panel metric-card">
+      <i class="bi bi-graph-up-arrow metric-icon text-emerald"></i>
+      <div class="metric-label">Avg Distance Saved</div>
+      <div class="metric-value text-cyan">{{ stats.avg_improvement }}%</div>
+      <div class="text-subtle fs-7 mt-1">Across all historical tours</div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-3">
+    <div class="glass-panel metric-card">
+      <i class="bi bi-signpost-2 metric-icon"></i>
+      <div class="metric-label">Cumulative Km Saved</div>
+      <div class="metric-value text-blue-electric">{{ stats.total_km_saved }} <span class="fs-6 text-muted">km</span></div>
+      <div class="text-subtle fs-7 mt-1">Fuel & travel reduction</div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-3">
+    <div class="glass-panel metric-card">
+      <i class="bi bi-trophy metric-icon text-amber"></i>
+      <div class="metric-label">Peak Improvement</div>
+      <div class="metric-value text-emerald">{{ stats.best_improvement }}%</div>
+      <div class="text-subtle fs-7 mt-1">Best single GA optimization</div>
+    </div>
+  </div>
+</div>
+
+<!-- Hero Cards Row -->
+<div class="row g-4 mb-4">
+  <!-- Latest Run Card -->
+  <div class="col-lg-7">
+    <div class="glass-panel p-4 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0 text-white">
+          <i class="bi bi-activity text-cyan me-2"></i>Latest Optimization Run
+        </h5>
+        {% if latest_run %}
+          <span class="badge badge-ai badge-cyan">Run #{{ latest_run.id }}</span>
+        {% endif %}
+      </div>
+
+      {% if latest_run %}
+        <div class="p-3 rounded-3 mb-3" style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-glass);">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <span class="text-muted fs-7 d-block">Origin & Hub</span>
+              <strong class="text-white fs-5"><i class="bi bi-geo-alt-fill text-amber me-1"></i>{{ latest_run.starting_city }}</strong>
+              <span class="text-subtle fs-7 d-block mt-1">{{ latest_run.selected_cities|length }} Total Cities Tour</span>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted fs-7 d-block">Routing Mode</span>
+              <span class="badge badge-ai {% if latest_run.distance_mode == 'road' %}badge-emerald{% else %}badge-cyan{% endif %} mt-1">
+                <i class="bi {% if latest_run.distance_mode == 'road' %}bi-car-front-fill{% else %}bi-globe-americas{% endif %} me-1"></i>
+                {{ latest_run.get_distance_mode_display }}
+              </span>
+            </div>
+          </div>
+
+          <hr class="border-secondary my-3 opacity-25">
+
+          <div class="row text-center g-2">
+            <div class="col-4">
+              <span class="text-muted fs-8 text-uppercase">Initial Route</span>
+              <div class="fs-6 fw-bold text-danger">{{ latest_run.initial_distance }} km</div>
+            </div>
+            <div class="col-4 border-start border-end border-secondary border-opacity-25">
+              <span class="text-muted fs-8 text-uppercase">AI Optimized</span>
+              <div class="fs-6 fw-bold text-success">{{ latest_run.optimized_distance }} km</div>
+            </div>
+            <div class="col-4">
+              <span class="text-muted fs-8 text-uppercase">Improvement</span>
+              <div class="fs-6 fw-bold text-cyan">+{{ latest_run.improvement_percentage }}%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-subtle fs-7">
+            <i class="bi bi-stopwatch me-1"></i>Execution: {{ latest_run.execution_time }}s
+            <span class="ms-2"><i class="bi bi-calendar3 me-1"></i>{{ latest_run.created_at|date:"d M Y, H:i" }}</span>
+          </span>
+          <a href="{% url 'optimizer' %}" class="btn btn-ai-outline-cyan btn-sm">
+            <i class="bi bi-arrow-repeat me-1"></i> Open Optimizer
+          </a>
+        </div>
+      {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-diagram-3 fs-1 text-muted opacity-50 mb-3 d-block"></i>
+          <h6 class="text-white">No Optimization Runs Recorded Yet</h6>
+          <p class="text-muted fs-7 mb-4">Select your cities and run the Genetic Algorithm to populate real metrics.</p>
+          <a href="{% url 'optimizer' %}" class="btn btn-ai-primary">
+            <i class="bi bi-play-circle me-1"></i> Run First Optimization
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Microproject Info & Quick Overview -->
+  <div class="col-lg-5">
+    <div class="glass-panel p-4 h-100">
+      <h5 class="fw-bold mb-3 text-white">
+        <i class="bi bi-lightbulb text-amber me-2"></i>Core Architecture
+      </h5>
+      <ul class="list-unstyled mb-0">
+        <li class="d-flex mb-3">
+          <div class="me-3 fs-4 text-cyan"><i class="bi bi-cpu"></i></div>
+          <div>
+            <strong class="text-white d-block">Genetic Algorithm Engine</strong>
+            <span class="text-muted fs-7">Tournament Selection, Ordered Crossover (OX1), and Swap Mutation with Elitism.</span>
+          </div>
+        </li>
+        <li class="d-flex mb-3">
+          <div class="me-3 fs-4 text-emerald"><i class="bi bi-map"></i></div>
+          <div>
+            <strong class="text-white d-block">Dual Distance Modes</strong>
+            <span class="text-muted fs-7">Great-circle Haversine formula and OSRM Road-Network routing with cache & fallback.</span>
+          </div>
+        </li>
+        <li class="d-flex mb-3">
+          <div class="me-3 fs-4 text-amber"><i class="bi bi-check2-circle"></i></div>
+          <div>
+            <strong class="text-white d-block">Brute-Force Mathematical Verification</strong>
+            <span class="text-muted fs-7">Exact factorial solver for &le; 9 cities to compare AI heuristics against global optimum.</span>
+          </div>
+        </li>
+        <li class="d-flex">
+          <div class="me-3 fs-4 text-blue-electric"><i class="bi bi-database-check"></i></div>
+          <div>
+            <strong class="text-white d-block">SQLite3 Persistence & Analytics</strong>
+            <span class="text-muted fs-7">Zero hardcoded outputs. Every coordinate, generation, and km metric is computed live.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Runs Table -->
+<div class="glass-panel p-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h5 class="fw-bold mb-0 text-white"><i class="bi bi-clock-history text-cyan me-2"></i>Recent Optimizations</h5>
+      <small class="text-muted">Real-time records logged in SQLite database</small>
+    </div>
+    <a href="{% url 'history' %}" class="btn btn-ai-secondary btn-sm">
+      View All <i class="bi bi-arrow-right ms-1"></i>
+    </a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-ai">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Timestamp</th>
+          <th>Start Hub</th>
+          <th>Cities</th>
+          <th>Mode</th>
+          <th>Initial (km)</th>
+          <th>Optimized (km)</th>
+          <th>Saved</th>
+          <th>Improvement</th>
+          <th>Exec Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in recent_runs %}
+        <tr>
+          <td><span class="badge badge-ai badge-cyan">#{{ r.id }}</span></td>
+          <td class="text-subtle fs-7">{{ r.created_at|date:"M d, H:i" }}</td>
+          <td class="fw-semibold text-white">{{ r.starting_city }}</td>
+          <td><span class="badge bg-secondary bg-opacity-50 text-white">{{ r.selected_cities|length }} cities</span></td>
+          <td>
+            <span class="badge badge-ai {% if r.distance_mode == 'road' %}badge-emerald{% else %}badge-cyan{% endif %}">
+              {{ r.get_distance_mode_display|slice:":10" }}
+            </span>
+          </td>
+          <td class="text-danger fw-semibold">{{ r.initial_distance }}</td>
+          <td class="text-success fw-semibold">{{ r.optimized_distance }}</td>
+          <td class="text-cyan">{{ r.distance_saved }} km</td>
+          <td>
+            <span class="badge badge-ai badge-emerald">+{{ r.improvement_percentage }}%</span>
+          </td>
+          <td class="text-subtle fs-7">{{ r.execution_time }}s</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="10" class="text-center py-4 text-muted">
+            No optimization runs recorded yet. Start your first optimization above!
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
